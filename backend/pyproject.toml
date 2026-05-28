@@ -1,0 +1,23 @@
+[project]
+name = "chatbot-assistant"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.129",
+    "uvicorn>=0.40",
+    "openai>=2.15",
+    "pydantic-settings>=2",
+    "uvicorn>=0.40",
+    "pymongo>4",
+    "ollama>=0.6.2",
+]
+
+[tool.uv]
+exclude-newer = "7 days"
+
+[dependency-groups]
+dev = [
+    "python-dotenv>=1.2.2",
+]
