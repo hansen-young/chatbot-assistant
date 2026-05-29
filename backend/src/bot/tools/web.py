@@ -90,6 +90,8 @@ async def web_read(url: str):
             html = await page.content()
             results["content"] = trafilatura.extract(html)
 
+            await page.close()
+
         except Exception as e:
             results["error"] = f"Failed to load page: {e}"
 
