@@ -12,6 +12,8 @@ dependencies = [
     "uvicorn>=0.40",
     "pymongo>4",
     "ollama>=0.6.2",
+    "playwright>=1.60.0",
+    "trafilatura>=2.0.0",
 ]
 
 [tool.uv]
@@ -19,5 +21,7 @@ exclude-newer = "7 days"
 
 [dependency-groups]
 dev = [
+    "ipykernel>=7.2.0",
+    "jupyter>=1.1.1",
     "python-dotenv>=1.2.2",
 ]

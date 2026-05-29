@@ -7,7 +7,7 @@ from pathlib import Path
 from ollama import AsyncClient
 from pymongo import AsyncMongoClient
 
-from bot.tools import filesystem
+from bot.tools import filesystem, web
 from bot.helpers import initialize_workspace
 from core.agents import Agent, AgentConfig, OllamaAgent
 from core.runners import Runner, SimpleRunner
@@ -33,6 +33,8 @@ async def init():
     AGENT.tool(filesystem.list_directory)
     AGENT.tool(filesystem.read_file)
     AGENT.tool(filesystem.write_file)
+    AGENT.tool(web.web_read)
+    AGENT.tool(web.web_search)
 
     # SESSION_SERVICE = InMemorySessionService()
     mongoclient = AsyncMongoClient(os.environ["MONGO_URI"])
