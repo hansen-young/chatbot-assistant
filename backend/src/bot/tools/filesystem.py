@@ -33,16 +33,19 @@ def list_directory(path: str = ".", depth: int = 1):
     return {"dir": str(path_), "contents": sorted(out)}
 
 
-def read_file(path: str):
-    """Read the file content from path. Absolute path is preferred, but relative path will work."""
+def read_file(path: str, show_lines: bool = False):
+    """Read the file content from path relative to the current directory."""
 
-    path = os.path.expanduser(path)
+    path_ = standardize_path(path)
 
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"Cannot find a file in {path}")
+    if not path_.is_file():
+        raise FileNotFoundError(f"File not found: {path}")
 
-    with open(path, "r") as fp:
-        return fp.read()
+    with open(path_, "r") as fp:
+        if show_lines:
+            return [{"line": i + 1, "c": line.strip("\n")} for i, line in enumerate(fp)]
+        else:
+            return fp.read()
 
 
 def write_file(path: str, content: str):
