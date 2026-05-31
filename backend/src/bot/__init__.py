@@ -8,12 +8,12 @@ from ollama import AsyncClient
 from pymongo import AsyncMongoClient
 
 from bot.tools import filesystem, web
-from bot.helpers import initialize_workspace
+from bot.helpers import initialize_workspace, standardize_path
 from core.agents import Agent, AgentConfig, OllamaAgent
 from core.runners import Runner, SimpleRunner
 from core.sessions import InMemorySessionService, MongoSessionService, SessionService
 
-WORKSPACE: Path = Path("/home/hyunix/workspace").expanduser().resolve()
+AGENT_HOME: Path = standardize_path("/home/hyunix/workspace")
 RUNNER: Runner | None = None
 AGENT: Agent | None = None
 SESSION_SERVICE: SessionService | None = None
@@ -22,7 +22,7 @@ SESSION_SERVICE: SessionService | None = None
 async def init():
     global AGENT, RUNNER, SESSION_SERVICE
 
-    initialize_workspace(WORKSPACE)
+    initialize_workspace(AGENT_HOME)
 
     client = AsyncClient(
         host="https://ollama.com",
@@ -45,22 +45,22 @@ async def init():
 
 async def load_prompt() -> str | None:
     BASE_PROMPT = f"""
-Current Directory: {os.getcwd()}
-Workspace: {os.path.abspath(WORKSPACE)}
+Agent Home: {AGENT_HOME}
 Environment:
+- Current Directory: {os.getcwd()}/
 - Current Date & Time: {datetime.now()}
 - OS: {platform.system()} {platform.release()}
 """
 
     components = [BASE_PROMPT]
 
-    with open(WORKSPACE / "SOUL.md", "r") as fp:
+    with open(AGENT_HOME / "SOUL.md", "r") as fp:
         components.append(fp.read())
 
-    with open(WORKSPACE / "IDENTITY.md", "r") as fp:
+    with open(AGENT_HOME / "IDENTITY.md", "r") as fp:
         components.append(fp.read())
 
-    with open(WORKSPACE / "USER.md", "r") as fp:
+    with open(AGENT_HOME / "USER.md", "r") as fp:
         components.append(fp.read())
 
     return "\n\n".join(components)
