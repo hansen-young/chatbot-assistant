@@ -1,24 +1,36 @@
 import os
+from pathlib import Path
+from queue import Queue
 from typing import Annotated
 
 from pydantic import Field
 
+from bot.helpers import standardize_path
 
-def list_directory(path: str = "."):
-    """List the path files and directories in the specified path."""
+
+def list_directory(path: str = ".", depth: int = 1):
+    """List all files and directories in the specified path relative to the current directory."""
 
     out: list[str] = []
-    path = os.path.expanduser(path)
+    path_ = standardize_path(path)
 
-    for file_or_dir in os.listdir(path):
-        relative_path = os.path.join(path, file_or_dir)
+    q: Queue[tuple[int, Path]] = Queue()
+    q.put((0, path_))
 
-        if os.path.isdir(relative_path):
-            out.append(f"{file_or_dir}/")
-        else:
-            out.append(file_or_dir)
+    while not q.empty():
+        tdepth, tpath = q.get()
 
-    return {"dir": os.path.abspath(path), "contents": out}
+        if tdepth == depth:
+            out.append(f"{tpath.relative_to(path_)}/")
+            continue
+
+        for file_or_dir in tpath.iterdir():
+            if file_or_dir.is_dir():
+                q.put((tdepth + 1, file_or_dir))
+            else:
+                out.append(f"{file_or_dir.relative_to(path_)}")
+
+    return {"dir": str(path_), "contents": sorted(out)}
 
 
 def read_file(path: str):
