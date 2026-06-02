@@ -32,7 +32,8 @@ async def init():
     AGENT = OllamaAgent(client, agent_config)
     AGENT.tool(filesystem.list_directory)
     AGENT.tool(filesystem.read_file)
-    AGENT.tool(filesystem.write_file)
+    AGENT.tool(filesystem.create_file)
+    AGENT.tool(filesystem.update_file)
     AGENT.tool(web.web_read)
     AGENT.tool(web.web_search)
 
