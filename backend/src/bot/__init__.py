@@ -34,6 +34,7 @@ async def init():
     AGENT.tool(filesystem.read_file)
     AGENT.tool(filesystem.create_file)
     AGENT.tool(filesystem.update_file)
+    AGENT.tool(filesystem.create_directory)
     AGENT.tool(web.web_read)
     AGENT.tool(web.web_search)
 

@@ -135,3 +135,16 @@ def update_file(
         fp.write("\n".join(line["content"] for line in file_content))
 
     return {"message": f"Updated '{path_}'."}
+
+
+def create_directory(path: str):
+    """Create a new directory in the specified path relative to the current directory."""
+
+    path_ = standardize_path(path)
+
+    if path_.exists():
+        raise FileExistsError(f"Directory {path_} exists.")
+
+    os.makedirs(path_)
+
+    return {"message": f"Created directory {path_}."}
