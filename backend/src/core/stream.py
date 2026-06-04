@@ -31,7 +31,8 @@ class StreamResponseAggregator:
         if rhs.thoughts:
             lhs.thoughts = (lhs.thoughts or "") + rhs.thoughts
 
-        # todo: update tool call
+        if rhs.tool_calls:
+            lhs.tool_calls = rhs.tool_calls
 
     def update(self, chunk: ChatResponse):
         if chunk.message.role != "assistant":
