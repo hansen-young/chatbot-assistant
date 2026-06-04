@@ -9,6 +9,7 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel, Field
 
 from bot import get_runner
+from core import context as ctx
 from core.runners import Runner
 from core.types.message_content import ContentPart
 
@@ -25,6 +26,18 @@ def stringify(contents: list[ContentPart]) -> str:
             result += content.text
 
     return result
+
+
+async def set_session_ctx(x_session_id: Annotated[str | None, Header()] = None):
+    x_session_id = x_session_id or str(uuid4())
+    token = None
+
+    try:
+        token = ctx.session_id.set(x_session_id)
+        yield x_session_id
+    finally:
+        if token:
+            ctx.session_id.reset(token)
 
 
 # --- Schema --- #
@@ -46,11 +59,10 @@ class ChatResponse(BaseModel):
 async def chat(
     body: ChatRequest,
     runner: Annotated[Runner, Depends(get_runner)],
-    x_session_id: Annotated[str | None, Header()] = None,
-):
-    x_session_id = x_session_id or str(uuid4())
-    contents = await runner.run(session_id=x_session_id, message=body.message)
-    return ChatResponse(session_id=x_session_id, message=stringify(contents))
+    session_id: Annotated[str, Depends(set_session_ctx)],
+) -> ChatResponse:
+    contents = await runner.run(session_id=session_id, message=body.message)
+    return ChatResponse(session_id=session_id, message=stringify(contents))
 
 
 # @V1Router.post("/chat/stream", tags=["chat"], response_class=EventSourceResponse)
