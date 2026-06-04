@@ -150,8 +150,19 @@ class OllamaAgent(Agent):
         return adapt_chat_response(response)
 
     async def run_stream(self, messages: Messages):
-        yield ChatResponse(
-            message=AssistantMessage(
-                content=[ContentPartText(text="Method not Implemented")]
-            )
+        if self.config.system_prompt:
+            messages = [
+                SystemMessage(
+                    content=[ContentPartText(text=self.config.system_prompt)]
+                ),
+                *messages,
+            ]
+
+        model: str = cast(str, self.config.model)
+        ollama_messages = [to_ollama_message(message) for message in messages]
+        response_iter = await self.client.chat(
+            model=model, messages=ollama_messages, tools=self.ollama_tools, stream=True
         )
+
+        async for chunk in response_iter:
+            yield adapt_chat_response(chunk)
