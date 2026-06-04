@@ -1,10 +1,17 @@
-from typing import Literal, TypeAlias
+from typing import Literal, Self, TypeAlias
 from pydantic import BaseModel
 
 
 class ContentPartText(BaseModel):
     type: Literal["text"] = "text"
     text: str
+
+    def to_string(self) -> str:
+        return self.text
+
+    def __iadd__(self, rhs: "ContentPartText") -> Self:
+        self.text += rhs.text
+        return self
 
 
 # class ContentPartImage(BaseModel):

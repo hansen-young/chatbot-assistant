@@ -4,8 +4,11 @@ from typing import AsyncGenerator, Generator, cast
 
 from core.agents import Agent
 from core.sessions import Session, SessionService
+from core.stream import StreamResponseAggregator
+from core.types.chat import ChatResponse
 from core.types.message import AssistantMessage, ToolMessage, UserMessage
 from core.types.message_content import ContentPart
+from core.types.server_event import ChatSSE, DeltaMessageSSE, EndSSE
 
 
 class Runner(ABC):
@@ -17,7 +20,7 @@ class Runner(ABC):
     async def run(self, session_id: str, message: str) -> list[ContentPart]: ...
 
     @abstractmethod
-    def run_stream(self, session_id: str, message: str) -> AsyncGenerator: ...
+    def run_stream(self, session_id: str, message: str) -> AsyncGenerator[ChatSSE, None]: ...  # fmt: skip
 
 
 class SimpleRunner(Runner):
@@ -40,6 +43,10 @@ class SimpleRunner(Runner):
                 text=tool_result,
                 tool_call_id=tool_call.id,
             )
+
+    def _iterate_content(self, response_chunk: ChatResponse):
+        for content in response_chunk.message.content or []:
+            yield content.to_string()
 
     def handoff_condition(self, session: Session) -> bool:
         return bool(session.messages) and session.messages[-1].role == "assistant"
@@ -68,7 +75,35 @@ class SimpleRunner(Runner):
         return session.messages[-1].content
 
     async def run_stream(self, session_id: str, message: str):
-        pass
+        if not (session := await self.session_service.load(session_id)):
+            session = await self.session_service.create(session_id)
+
+        session.add_message(UserMessage, text=message)
+
+        while not self.handoff_condition(session):
+            aggregator = StreamResponseAggregator()
+            response_iter = self.agent.run_stream(session.messages)
+
+            async for chunk in response_iter:
+                aggregator.update(chunk)
+                for delta_text in self._iterate_content(chunk):
+                    yield DeltaMessageSSE(data={"content": delta_text})
+
+            response = aggregator.response()
+
+            if response.finish_reason == "stop":
+                await self._handle_stop_reason(session, response.message)
+            elif response.finish_reason == "tool_calls":
+                await self._handle_tool_calls_reason(session, response.message)
+            else:
+                raise RuntimeError(f"Unknown finish reason: {response.finish_reason}")
+
+        if not session.messages[-1].content:
+            raise RuntimeError("No valid assistant response found")
+
+        await self.session_service.save(session)
+
+        yield EndSSE(data={"session_id": session_id})
 
     # async def run_stream(self, session_id: str, message: str):
     #     if not (session := await self.session_service.load(session_id)):

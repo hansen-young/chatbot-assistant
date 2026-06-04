@@ -148,3 +148,10 @@ class OllamaAgent(Agent):
         )
 
         return adapt_chat_response(response)
+
+    async def run_stream(self, messages: Messages):
+        yield ChatResponse(
+            message=AssistantMessage(
+                content=[ContentPartText(text="Method not Implemented")]
+            )
+        )

@@ -1,3 +1,4 @@
+from itertools import batched
 from typing import Self
 
 from core.types.chat import ChatResponse, ChatResponseCostUsage, ChatResponseUsage
@@ -29,3 +30,29 @@ class EchoAgent(Agent):
             model="echo-agent",
             usage=ChatResponseUsage(cost=ChatResponseCostUsage(total=0)),
         )
+
+    async def run_stream(self, messages: Messages):
+        if not messages:
+            raise RuntimeError("No messages provided to the agent")
+
+        if messages[-1].role != "user":
+            raise RuntimeError("The last message must be from the user")
+
+        reply_content = "Nothing to echo!"
+
+        for content in messages[-1].content:
+            if content.type == "text":
+                reply_content = "Echo: " + content.text
+
+        chunks = list(batched(reply_content, n=2))
+
+        for i, chunk in enumerate(chunks):
+            finish_reason = "stop" if i == len(chunks) - 1 else None
+            yield ChatResponse(
+                finish_reason=finish_reason,
+                message=AssistantMessage(
+                    content=[ContentPartText(text="".join(chunk))]
+                ),
+                model="echo-agent",
+                usage=ChatResponseUsage(cost=ChatResponseCostUsage(total=0)),
+            )

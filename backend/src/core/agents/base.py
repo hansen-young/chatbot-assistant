@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Self
+from typing import AsyncGenerator, Awaitable, Callable, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,12 +24,10 @@ class Agent(ABC):
     def compile(self) -> Self: ...
 
     @abstractmethod
-    async def run(self, messages: Messages) -> ChatResponse: ...
+    def run(self, messages: Messages) -> Awaitable[ChatResponse]: ...
 
-    # @abstractmethod
-    # def run_async(
-    #     self, messages: Messages
-    # ) -> AsyncGenerator[ChatResponseChunk, None]: ...
+    @abstractmethod
+    def run_stream(self, messages: Messages) -> AsyncGenerator[ChatResponse, None]: ...
 
     # --- Decorators --- #
     def tool(self, fn: Callable):
