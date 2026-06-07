@@ -75,13 +75,10 @@ async def chat_stream(
 
 
 @V1Router.get("/session/{session_id}", tags=["session"])
-async def get_session(
-    x_session_id: Annotated[str, Header()],
-    runner: Annotated[Runner, Depends(get_runner)],
-):
-    if session := await runner.session_service.load(x_session_id):
+async def get_session(session_id: str, runner: Annotated[Runner, Depends(get_runner)]):
+    if session := await runner.session_service.load(session_id):
         return session
     return JSONResponse(
         status_code=404,
-        content={"detail": f"Session {x_session_id} not found"},
+        content={"detail": f"Session {session_id} not found"},
     )
