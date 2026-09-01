@@ -1,16 +1,13 @@
 import os
 from pathlib import Path
 from queue import Queue
-from typing import Annotated, Literal, TypedDict, overload
+from typing import Annotated, Literal
 
+import mlflow
+from mlflow.entities import SpanType
 from pydantic import Field
 
 from bot.helpers import standardize_path
-
-
-class FileLine(TypedDict):
-    lineno: int
-    content: str
 
 
 def list_directory(path: str = ".", depth: int = 1):
@@ -38,33 +35,46 @@ def list_directory(path: str = ".", depth: int = 1):
     return {"dir": str(path_), "contents": sorted(out)}
 
 
-@overload
-def read_file(path: str, show_lines: Literal[True]) -> list[FileLine]: ...
+def read_file(
+    path: Annotated[
+        str,
+        Field(description="Path to the file to read (absolute / relative)."),
+    ],
+    start_line: Annotated[
+        int,
+        Field(description="Line number to start reading from (1-indexed)"),
+    ] = 1,
+    limit: Annotated[
+        int,
+        Field(description="Maximum number of lines to read"),
+    ] = 100,
+) -> str:
+    """Read file content from the specified path. Values are returned as <lineno>| <content>. Long contents are automatically truncated, call tool again with `start_line` offset specified to continue reading."""
 
-
-@overload
-def read_file(path: str, show_lines: Literal[False]) -> str: ...
-
-
-def read_file(path: str, show_lines: bool = False) -> list[FileLine] | str:
-    """Read the file content from path relative to the current directory."""
-
+    max_length = 1_000_000
+    curr_length = 0
+    contents: list[str] = []
     path_ = standardize_path(path)
 
     if not path_.is_file():
-        raise FileNotFoundError(f"File not found: {path}")
+        raise FileNotFoundError(f"File not found: {path_}")
 
     with open(path_, "r") as fp:
-        if show_lines:
-            return [
-                {"lineno": i + 1, "content": line.strip("\n")}
-                for i, line in enumerate(fp)
-            ]
-        else:
-            return fp.read()
+        for i, line in enumerate(fp, start=1):
+            if i < start_line:
+                continue
+
+            if curr_length + len(line) > max_length:
+                contents.append(f"{i}| {line[:max_length - curr_length]}...")
+                break
+
+            contents.append(f"{i}| {line}")
+            curr_length += len(line)
+
+    return "".join(contents)
 
 
-def create_file(path: str):
+def create_file(path: str = "s"):
     """Create a file on the specified path."""
 
     path_ = standardize_path(path)
@@ -79,22 +89,27 @@ def create_file(path: str):
 
 
 def update_file(
-    path: Annotated[str, Field(description="path to the file to modify")],
+    path: Annotated[
+        str,
+        Field(description="Path to the file to modify (absolute / relative)."),
+    ],
     content: Annotated[str, Field(description="text to insert or replace in the file")],
     mode: Annotated[
-        Literal["insert", "replace"],
+        Literal["append", "replace_line", "overwrite"],
         Field(
-            description="operation mode: 'insert' to insert the content at start_line, 'replace' to replace lines from start_line to end_line"
+            description="'append' adds content from `start_line`, 'replace_line' updates existing lines, 'overwrite' deletes the file content then writes the new content"
         ),
     ],
     start_line: Annotated[
         int,
-        Field(description="1-based line number where insertion or replacement begins"),
+        Field(
+            description="Line number where append or replace_line begins (1-indexed)"
+        ),
     ] = 1,
     end_line: Annotated[
         int | None,
         Field(
-            description="1-based line number where replacement ends; if None and mode is 'replace' it will automatically infer from the length of 'content'"
+            description="Line number where replacement ends (1-indexed); if not specified, it will automatically infer from the length of 'content'"
         ),
     ] = None,
 ):
@@ -102,37 +117,35 @@ def update_file(
 
     path_ = standardize_path(path)
     new_content = content.split("\n")
-    file_content = read_file(path, show_lines=True)
-    start_line = start_line - 1
+    file_content = open(path_, "r").read().splitlines()
+    start_line = max(0, start_line - 1)
     end_line = end_line or start_line + len(new_content)
 
-    if mode == "insert":
-        new_content_fmt: list[FileLine] = [
-            {"lineno": -1, "content": c} for c in new_content
-        ]
+    if mode == "append":
         file_content = (
-            file_content[:start_line] + new_content_fmt + file_content[start_line:]
+            file_content[:start_line] + new_content + file_content[start_line:]
         )
 
-    else:
+    elif mode == "replace_line":
         i = start_line
         j = start_line + len(new_content)
 
         while len(file_content) < j:
-            file_content.append({"lineno": -1, "content": ""})
+            file_content.append("")
 
         for line in new_content:
-            file_content[i]["content"] = line
+            file_content[i] = line
             i += 1
 
         if i < end_line:
             file_content = file_content[:i] + file_content[end_line:]
 
-    for i in range(len(file_content)):
-        file_content[i]["lineno"] = i + 1
+    else:
+        open(path_, "w").close()
+        file_content = new_content
 
     with open(f"{path_}", "w") as fp:
-        fp.write("\n".join(line["content"] for line in file_content))
+        fp.write("\n".join(line for line in file_content))
 
     return {"message": f"Updated '{path_}'."}
 
