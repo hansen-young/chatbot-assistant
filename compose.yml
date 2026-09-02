@@ -1,3 +1,7 @@
+include:
+  - https://github.com/hansen-young/dev-stack.git#main:mongodb/compose.yml
+  - https://github.com/hansen-young/dev-stack.git#main:valkey/compose.yml
+  
 services:
   # backend:
   #   build:
@@ -7,16 +11,6 @@ services:
   #   ports:
   #     - 8000:8000
 
-  mongodb:
-    image: mongo:7.0.34
-    ports:
-      - 27017:27017
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: s3cr3t
-    volumes:
-      - .volumes/mongo:/data/db
-
   searxng:
     image: searxng/searxng:2026.5.29-4ea5c57a8
     ports:
@@ -25,16 +19,7 @@ services:
       SEARXNG_BIND_ADDRESS: 0.0.0.0
       SEARXNG_PORT: 8080
       SEARXNG_LIMITER: false
-      SEARXNG_VALKEY_URL: valkey://valkey:6379/0
+      SEARXNG_VALKEY_URL: valkey://:s3cr3t@valkey:6379/0
     volumes:
       - .volumes/searxng/core-config:/etc/searxng/:Z
       - .volumes/searxng/core-data:/var/cache/searxng/
-
-  valkey:
-    image: valkey/valkey:9-alpine
-    command: valkey-server --save 30 1 --loglevel warning
-    ports:
-      - 6379:6379
-    volumes:
-      - .volumes/valkey-data:/data
-
