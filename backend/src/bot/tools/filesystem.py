@@ -55,6 +55,7 @@ def read_file(
     curr_length = 0
     contents: list[str] = []
     path_ = standardize_path(path)
+    end_line = start_line + limit
 
     if not path_.is_file():
         raise FileNotFoundError(f"File not found: {path_}")
@@ -63,6 +64,9 @@ def read_file(
         for i, line in enumerate(fp, start=1):
             if i < start_line:
                 continue
+
+            if i >= end_line:
+                break
 
             if curr_length + len(line) > max_length:
                 contents.append(f"{i}| {line[:max_length - curr_length]}...")
