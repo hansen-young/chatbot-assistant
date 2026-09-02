@@ -9,7 +9,8 @@ from ollama import (
     Tool as OllamaTool,
 )
 
-from core.tools import ToolDefinition
+from core.errors import ToolsetNotFoundError
+from core.tools import ToolDefinition, registry
 from core.types.chat import ChatResponse, ChatResponseTokenUsage, ChatResponseUsage
 from core.types.message import AssistantMessage, Message, Messages, SystemMessage
 from core.types.message_content import (
@@ -92,8 +93,14 @@ def to_ollama_message(message: Message) -> OllamaMessage:
     return OllamaMessage(role=message.role, content=ollama_content)
 
 
-def to_ollama_tools(definitions: list[ToolDefinition]) -> list[OllamaTool]:
+def to_ollama_tools(toolsets: set[str]) -> list[OllamaTool]:
     ollama_tools: list[OllamaTool] = []
+    definitions: list[ToolDefinition] = []
+
+    for ts in toolsets:
+        if ts not in registry.toolsets:
+            raise ToolsetNotFoundError(f"Error: Toolset {ts} not recognized.")
+        definitions += registry.toolsets[ts].definitions
 
     for definition in definitions:
         if definition["type"] == "function":
@@ -129,7 +136,7 @@ class OllamaAgent(Agent):
         self.ollama_tools: list[OllamaTool] | None = None
 
     def compile(self):
-        self.ollama_tools = to_ollama_tools(self.config.toolset.definitions)
+        self.ollama_tools = to_ollama_tools(self.config.toolsets)
         return self
 
     async def run(self, messages: Messages):

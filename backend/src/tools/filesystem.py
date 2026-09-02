@@ -3,13 +3,13 @@ from pathlib import Path
 from queue import Queue
 from typing import Annotated, Literal
 
-import mlflow
-from mlflow.entities import SpanType
 from pydantic import Field
 
-from bot.helpers import standardize_path
+from core.tools import registry
+from core.utils import standardize_path
 
 
+@registry.register("filesystem")
 def list_directory(path: str = ".", depth: int = 1):
     """List all files and directories in the specified path relative to the current directory."""
 
@@ -35,6 +35,7 @@ def list_directory(path: str = ".", depth: int = 1):
     return {"dir": str(path_), "contents": sorted(out)}
 
 
+@registry.register("filesystem")
 def read_file(
     path: Annotated[
         str,
@@ -78,6 +79,7 @@ def read_file(
     return "".join(contents)
 
 
+@registry.register("filesystem")
 def create_file(path: str = "s"):
     """Create a file on the specified path."""
 
@@ -92,6 +94,7 @@ def create_file(path: str = "s"):
     return {"message": f"Created {path_}."}
 
 
+@registry.register("filesystem")
 def update_file(
     path: Annotated[
         str,
@@ -154,6 +157,7 @@ def update_file(
     return {"message": f"Updated '{path_}'."}
 
 
+@registry.register("filesystem")
 def create_directory(path: str):
     """Create a new directory in the specified path relative to the current directory."""
 

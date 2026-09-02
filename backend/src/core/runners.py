@@ -37,7 +37,7 @@ class SimpleRunner(Runner):
         for tool_call in message.tool_calls:
             name = tool_call.fn_name
             kwargs: dict = json.loads(tool_call.fn_arguments)
-            tool_result = await self.agent.config.toolset.invoke(name, kwargs)
+            tool_result = await self.agent.invoke_tool(name, kwargs)
             session.add_message(
                 ToolMessage,
                 text=tool_result,

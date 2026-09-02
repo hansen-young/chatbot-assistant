@@ -5,6 +5,8 @@ from typing import Any, Awaitable, Callable, Literal, Required, TypeAlias, Typed
 
 from pydantic import TypeAdapter
 
+from core.errors import ToolNotFoundError
+
 
 class Tool(ABC):
     @abstractmethod
@@ -68,6 +70,42 @@ class Toolset:
             return f"Tool '{name}' error: {e}"
 
 
+class ToolRegistry:
+    def __init__(self):
+        self.toolsets: dict[str, Toolset] = {}
+
+    def register(self, ts: str):
+        if ts not in self.toolsets:
+            self.toolsets[ts] = Toolset()
+
+        def decorator(func: Callable):
+            tool = create_function_tool(func)
+            definition = function_to_json_schema(func)
+            definition["name"] = f"{ts}.{definition['name']}"
+
+            if definition["name"] in self.toolsets[ts].tools:
+                raise KeyError(
+                    f"Tool {definition['name']} is defined more than once in Toolset '{ts}'."
+                )
+
+            self.toolsets[ts].add(tool, definition)
+
+        return decorator
+
+    async def invoke(self, tool_id: str, kwargs: dict) -> tuple[str, Exception | None]:
+        ts = tool_id.split(".", 1)[0]
+
+        if ts in self.toolsets and tool_id in self.toolsets[ts].tools:
+            tool = self.toolsets[ts].tools[tool_id]
+
+            try:
+                return (await tool.invoke(**kwargs), None)
+            except Exception as e:
+                return ("", e)
+
+        return ("", ToolNotFoundError(f"Error: Tool {tool_id} not found"))
+
+
 def create_function_tool(func: Callable) -> Tool:
     if inspect.iscoroutinefunction(func):
         return AsyncFunctionTool(func)
@@ -88,3 +126,6 @@ def function_to_json_schema(func: Callable) -> FunctionToolDefinition:
         "description": description,
         "input_schema": TypeAdapter(func).json_schema(),
     }
+
+
+registry = ToolRegistry()

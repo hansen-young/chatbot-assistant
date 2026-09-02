@@ -7,13 +7,13 @@ from pathlib import Path
 from ollama import AsyncClient
 from pymongo import AsyncMongoClient
 
-from bot.tools import filesystem, web
-from bot.helpers import initialize_workspace, standardize_path
+from bot.helpers import initialize_workspace
 from core.agents import Agent, AgentConfig, OllamaAgent
 from core.runners import Runner, SimpleRunner
 from core.sessions import InMemorySessionService, MongoSessionService, SessionService
+from core.utils import standardize_path
 
-AGENT_HOME: Path = standardize_path("/home/hyunix/workspace")
+AGENT_HOME: Path = standardize_path("~/workspace")
 RUNNER: Runner | None = None
 AGENT: Agent | None = None
 SESSION_SERVICE: SessionService | None = None
@@ -24,19 +24,16 @@ async def init():
 
     initialize_workspace(AGENT_HOME)
 
-    client = AsyncClient(
-        host="https://ollama.com",
-        headers={"Authorization": "Bearer " + os.environ["OLLAMA_API_KEY"]},
-    )
-    agent_config = AgentConfig(model="gpt-oss:20b-cloud")
+    # client = AsyncClient(
+    #     host="https://ollama.com",
+    #     headers={"Authorization": "Bearer " + os.environ["OLLAMA_API_KEY"]},
+    # )
+    # agent_config = AgentConfig(model="gpt-oss:20b-cloud", toolsets={"filesystem"})
+
+    client = AsyncClient(host="http://localhost:11434")
+    agent_config = AgentConfig(model="qwen3.5:9b-mlx", toolsets={"filesystem"})
+
     AGENT = OllamaAgent(client, agent_config)
-    AGENT.tool(filesystem.list_directory)
-    AGENT.tool(filesystem.read_file)
-    AGENT.tool(filesystem.create_file)
-    AGENT.tool(filesystem.update_file)
-    AGENT.tool(filesystem.create_directory)
-    AGENT.tool(web.web_read)
-    AGENT.tool(web.web_search)
 
     # SESSION_SERVICE = InMemorySessionService()
     mongoclient = AsyncMongoClient(os.environ["MONGO_URI"])

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 import bot
 from config import config
 from routers.health import HealthRouter
+from routers.tools import ToolRouter
 from routers.v1 import V1Router
 
 
@@ -20,5 +21,6 @@ async def lifespan(app: FastAPI):
 def create_app():
     app = FastAPI(title="My Chatbot API", lifespan=lifespan)
     app.include_router(HealthRouter)
+    app.include_router(ToolRouter)
     app.include_router(V1Router)
     return app
